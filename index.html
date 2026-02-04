@@ -1,68 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Side Quest: Valentine’s Edition</title>
-
+  <meta charset="UTF-8" />
+  <title>Valentine’s Side Quest</title>
   <style>
     body {
-      background-color: black;
+      background-color: #000;
       color: #00ff9c;
       font-family: "Courier New", monospace;
       padding: 40px;
     }
 
-    .cursor {
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      0% { opacity: 1; }
-      50% { opacity: 0; }
-      100% { opacity: 1; }
+    .hidden {
+      display: none;
     }
 
     button {
-      background: black;
-      color: #00ff9c;
+      background: none;
       border: 1px solid #00ff9c;
-      padding: 10px 20px;
-      font-family: inherit;
+      color: #00ff9c;
+      padding: 10px 16px;
+      margin: 10px 0;
       cursor: pointer;
-      margin-top: 20px;
-      margin-right: 10px;
+      font-family: inherit;
     }
 
     button:hover {
       background-color: #00ff9c;
-      color: black;
+      color: #000;
     }
 
-    .hidden {
-      display: none;
+    .section {
+      margin-top: 30px;
+    }
+
+    .riddle {
+      margin-top: 15px;
+      cursor: pointer;
+    }
+
+    .reveal {
+      margin-top: 10px;
+      color: #b6ffd9;
     }
   </style>
 </head>
 <body>
 
-  <p>> booting system...</p>
-  <p>> user detected.</p>
-  <p>> scanning emotional firewall...</p>
+  <!-- INTRO -->
+  <div id="intro">
+    <p>> initializing secure connection…</p>
+    <p>> valentine’s side quest loaded</p>
+    <p>> proceed?</p>
+    <button onclick="startQuest()">Y</button>
+  </div>
 
-  <p><br>ALERT: Unrecognized feelings detected.</p>
-  <p>Proceed?</p>
+  <!-- PATH SELECTION -->
+  <div id="paths" class="hidden section">
+    <p>> access granted.</p>
+    <p>> choose your path:</p>
 
-  <button onclick="startQuest()">Y</button>
+    <button onclick="showSection('boss')">🏋️ Boss Fight</button><br>
+    <button onclick="showSection('system')">💻 System Breach</button><br>
+    <button onclick="showSection('endgame')">🎮 Endgame</button>
+  </div>
 
-  <div id="quest" class="hidden">
-    <p><br>> access granted.</p>
-    <p>> side quest unlocked.</p>
-    <p class="cursor">▮</p>
+  <!-- BOSS FIGHT -->
+  <div id="boss" class="hidden section">
+    <p>> initiating boss fight…</p>
+    <p>> difficulty: intimidating</p>
+    <p>> outcome: impressive</p>
+
+    <div class="riddle" onclick="reveal('bossReveal')">
+      <p><strong>Riddle:</strong><br>
+      What’s built like a final boss<br>
+      and min-maxed every stat on purpose?</p>
+    </div>
+
+    <div id="bossReveal" class="hidden reveal">
+      <p>You.</p>
+      <p>
+        You’re built like a boss fight—<br>
+        strength, discipline, presence.<br><br>
+
+        What stands out to me is how intentional you are.<br>
+        You don’t rely on luck.<br>
+        You put the work in, consistently.<br><br>
+
+        All that muscle,<br>
+        and somehow the sharpest part of you<br>
+        is your mind.
+      </p>
+    </div>
+  </div>
+
+  <!-- SYSTEM BREACH -->
+  <div id="system" class="hidden section">
+    <p>> unauthorized intelligence detected</p>
+    <p>> system integrity compromised (in a good way)</p>
+
+    <div class="riddle" onclick="reveal('systemReveal')">
+      <p><strong>Riddle:</strong><br>
+      What breaks systems<br>
+      and makes me lean closer?</p>
+    </div>
+
+    <div id="systemReveal" class="hidden reveal">
+      <p>You.</p>
+      <p>> cognitive anomaly confirmed</p>
+      <p>
+        I love how your mind works.<br>
+        The way you think, notice patterns, and stay curious.<br><br>
+
+        You’re the kind of smart that doesn’t need to prove itself.<br>
+        Quiet confidence. Precision.<br><br>
+
+        > subtle movement detected behind user…<br>
+        > possible tail activity?
+      </p>
+    </div>
+  </div>
+
+  <!-- ENDGAME -->
+  <div id="endgame" class="hidden section">
+    <p>> endgame unlocked</p>
+    <p>> environment stabilized</p>
+    <p>> lights: low</p>
+
+    <div class="riddle" onclick="reveal('endgameReveal')">
+      <p><strong>Riddle:</strong><br>
+      What feels safest<br>
+      when the world goes quiet?</p>
+    </div>
+
+    <div id="endgameReveal" class="hidden reveal">
+      <p>Sitting with you.</p>
+      <p>
+        Some moments don’t pull you out of yourself.<br>
+        They bring you <em>back</em>.<br><br>
+
+        Lights off.<br>
+        Water running.<br>
+        Music steady enough to breathe to.<br><br>
+
+        Sitting there with you,<br>
+        I didn’t feel strange or out of place.<br>
+        I felt present.<br><br>
+
+        Like I belonged exactly where I was.
+      </p>
+
+      <button onclick="showSection('reward')">Complete Quest</button>
+    </div>
+  </div>
+
+  <!-- REWARD -->
+  <div id="reward" class="hidden section">
+    <p>> quest complete</p>
+    <p>> reward generated</p>
+
+    <button onclick="window.open('PASTE_PLAYLIST_LINK_HERE', '_blank')">
+      🎧 Shared Frequencies
+    </button>
+
+    <p><br>
+      Well done, Mr. Cody.<br>
+      I’m really enjoying this playthrough.
+    </p>
   </div>
 
   <script>
     function startQuest() {
-      document.getElementById("quest").classList.remove("hidden");
+      document.getElementById("intro").classList.add("hidden");
+      document.getElementById("paths").classList.remove("hidden");
+    }
+
+    function showSection(id) {
+      const sections = ["boss", "system", "endgame", "reward"];
+      sections.forEach(sec => {
+        const el = document.getElementById(sec);
+        if (el) el.classList.add("hidden");
+      });
+      document.getElementById(id).classList.remove("hidden");
+    }
+
+    function reveal(id) {
+      document.getElementById(id).classList.remove("hidden");
     }
   </script>
 
