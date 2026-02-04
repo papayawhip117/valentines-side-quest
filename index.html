@@ -59,11 +59,22 @@
   <div id="paths" class="hidden section">
     <p>> access granted.</p>
     <p>> choose your path:</p>
+    
+<button onclick="startGame()">🐾 Begin Side Quest</button><br><br>
 
     <button onclick="showSection('boss')">🏋️ Boss Fight</button><br>
     <button onclick="showSection('system')">💻 System Breach</button><br>
     <button onclick="showSection('endgame')">🎮 Endgame</button>
   </div>
+  
+<div id="game" class="hidden section">
+  <p>> companion detected</p>
+  <p>> initializing puppy quest…</p>
+  <p id="hearts">❤️❤️❤️</p>
+  <canvas id="gameCanvas" width="600" height="200"
+    style="border:1px solid #00ff9c;"></canvas>
+  <p id="gameMessage"></p>
+</div>
 
   <!-- BOSS FIGHT -->
   <div id="boss" class="hidden section">
@@ -188,6 +199,78 @@
       document.getElementById(id).classList.remove("hidden");
     }
   </script>
+<script>
+  let canvas, ctx;
+  let puppy = { x: 50, y: 150, vy: 0, onGround: false };
+  let bones = [{ x: 300, y: 160 }, { x: 400, y: 160 }];
+  let hearts = 3;
+  let gravity = 0.6;
+  let keys = {};
+
+  function startGame() {
+    showSection("game");
+    canvas = document.getElementById("gameCanvas");
+    ctx = canvas.getContext("2d");
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
+    requestAnimationFrame(gameLoop);
+  }
+
+  function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Gravity
+    puppy.vy += gravity;
+    puppy.y += puppy.vy;
+
+    // Ground
+    if (puppy.y > 150) {
+      puppy.y = 150;
+      puppy.vy = 0;
+      puppy.onGround = true;
+    }
+
+    // Movement
+    if (keys["ArrowRight"]) puppy.x += 2;
+    if (keys["ArrowLeft"]) puppy.x -= 2;
+    if (keys["ArrowUp"] && puppy.onGround) {
+      puppy.vy = -10;
+      puppy.onGround = false;
+    }
+
+    // Draw puppy
+    ctx.fillStyle = "#00ff9c";
+    ctx.fillRect(puppy.x, puppy.y, 20, 20);
+
+    // Draw bones
+    ctx.fillStyle = "#ffffff";
+    bones.forEach((b, i) => {
+      ctx.fillRect(b.x, b.y, 10, 10);
+
+      // Collision
+      if (
+        puppy.x < b.x + 10 &&
+        puppy.x + 20 > b.x &&
+        puppy.y < b.y + 10 &&
+        puppy.y + 20 > b.y
+      ) {
+        bones.splice(i, 1);
+      }
+    });
+
+    // Check win
+    if (bones.length === 0) {
+      document.getElementById("gameMessage").innerText =
+        "> level complete";
+      setTimeout(() => {
+        showSection("boss");
+      }, 1000);
+      return;
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+</script>
 
 </body>
 </html>
