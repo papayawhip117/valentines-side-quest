@@ -23,21 +23,40 @@
     margin: auto;
     display: block;
   }
+  #dialogueBox {
+    display: none;
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    border: 2px solid #ff66aa;
+    padding: 20px;
+    color: #ff66aa;
+    font-family: monospace;
+    max-width: 600px;
+  }
+  .clickable {
+    cursor: pointer;
+    text-decoration: underline;
+  }
 </style>
 </head>
 <body>
 
 <div id="terminal"></div>
 <canvas id="gameCanvas" width="800" height="400"></canvas>
+<div id="dialogueBox"></div>
 
 <script>
 const terminal = document.getElementById("terminal");
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const dialogueBox = document.getElementById("dialogueBox");
 
 let gameStarted = false;
 
-// Terminal text lines
+// Intro text
 const introLines = [
   "YOU'VE BEEN HACKED BY BUNNY! MUHAHAHA",
   "!!! SYSTEM COMPROMISED !!!",
@@ -63,11 +82,9 @@ function typeLine() {
     }
   }
 }
-
-// Start the intro
 typeLine();
 
-// Flicker effect for “hacker vibe”
+// Flicker effect
 function flickerTerminal() {
   if(Math.random() < 0.1){
     terminal.style.color = "#ff99cc";
@@ -78,23 +95,26 @@ function flickerTerminal() {
 }
 flickerTerminal();
 
-// Listen for keypress
-document.addEventListener("keydown", (e) => {
+// Listen for Y key to start
+document.addEventListener("keydown", function(e) {
   if(!gameStarted && (e.key === "y" || e.key === "Y")){
     startGame();
   }
 });
 
-// Start game placeholder
+// Start game
 function startGame(){
   gameStarted = true;
   terminal.style.display = "none";
   canvas.style.display = "block";
   drawPlaceholderPuppy();
+  // Simulate level completion after 3s
+  setTimeout(showEndgame, 3000);
 }
 
 // Placeholder puppy drawing
 function drawPlaceholderPuppy(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle = "brown";
   ctx.fillRect(50, 300, 40, 30); // body
   ctx.fillStyle = "darkbrown";
@@ -109,9 +129,52 @@ function drawPlaceholderPuppy(){
   ctx.fillStyle = "black";
   ctx.fillRect(55, 285, 5, 5);
   ctx.fillRect(78, 285, 5, 5);
-  // tail (placeholder)
+  // tail
   ctx.fillStyle = "darkbrown";
   ctx.fillRect(30, 300, 10, 5);
+}
+
+// Endgame heart
+function showEndgame(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Draw pixel heart placeholder
+  ctx.fillStyle = "green";
+  ctx.fillRect(370,180,20,20);
+  ctx.fillRect(390,180,20,20);
+  ctx.fillRect(360,200,20,20);
+  ctx.fillRect(400,200,20,20);
+  ctx.fillRect(370,220,40,20);
+
+  dialogueBox.style.display = "block";
+  dialogueBox.innerHTML = 'Well done, Mr. Cody. <span class="clickable" id="heartClick">Click the heart</span>';
+
+  document.getElementById("heartClick").addEventListener("click", showBonus);
+}
+
+// Bonus loot cassette
+function showBonus(){
+  dialogueBox.style.display = "none";
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Draw cassette
+  ctx.fillStyle = "black";
+  ctx.fillRect(360,180,80,40); // body
+  ctx.fillStyle = "white";
+  ctx.fillRect(365,185,70,30); // label
+  ctx.fillStyle = "green";
+  ctx.fillRect(365,200,30,10); // tape reel left
+  ctx.fillRect(405,200,30,10); // tape reel right
+  // Heart on cassette
+  ctx.fillStyle = "black";
+  ctx.fillRect(395,190,10,10);
+  ctx.fillStyle = "white";
+  ctx.fillRect(396,191,8,8);
+
+  dialogueBox.style.display = "block";
+  dialogueBox.innerHTML = 'Bonus Loot Unlocked: Puppy’s Playlist! <span class="clickable" id="cassetteClick">Click to listen</span>';
+
+  document.getElementById("cassetteClick").addEventListener("click", function(){
+    alert("Link to playlist here!");
+  });
 }
 </script>
 
