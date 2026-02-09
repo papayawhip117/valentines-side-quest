@@ -1,326 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>404: ERROR HEART NOT FOUND</title>
+
 <style>
-  #intro {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 24px;
-  text-align: center;
-  color: #00ff9c;
-  font-family: monospace;
-}
+  body {
+    margin: 0;
+    background: black;
+    color: #00ff9c;
+    font-family: monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
 
-#bunny {
-  width: 180px;
-  image-rendering: pixelated;
-}
+  #intro, #game {
+    text-align: center;
+  }
 
-#terminal {
-  background: rgba(0, 0, 0, 0.8);
-  padding: 16px 24px;
-  border: 1px solid #00ff9c;
-  box-shadow: 0 0 12px #00ff9c55;
-}
+  #game {
+    display: none;
+  }
 
-.glitch {
-  font-size: 1.2rem;
-  animation: glitch 1.2s infinite;
-}
+  #terminal {
+    border: 1px solid #00ff9c;
+    padding: 16px;
+    margin-bottom: 12px;
+    width: 420px;
+    white-space: pre-line;
+  }
 
-.sub {
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
+  button {
+    background: black;
+    color: #00ff9c;
+    border: 1px solid #00ff9c;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-family: monospace;
+  }
 
-#secureBtn {
-  background: black;
-  color: #00ff9c;
-  border: 1px solid #00ff9c;
-  padding: 12px 18px;
-  font-family: monospace;
-  cursor: pointer;
-}
+  button:hover {
+    background: #00ff9c;
+    color: black;
+  }
 
-#secureBtn:hover {
-  background: #00ff9c;
-  color: black;
-}
+  canvas {
+    border: 2px solid #00ff9c;
+    image-rendering: pixelated;
+    background: #000;
+  }
 
-@keyframes glitch {
-  0% { text-shadow: 2px 0 red; }
-  25% { text-shadow: -2px 0 cyan; }
-  50% { text-shadow: 2px 0 magenta; }
-  75% { text-shadow: -2px 0 lime; }
-  100% { text-shadow: 2px 0 red; }
-}
+  #dialogueBox {
+    margin-top: 10px;
+  }
+
+  .clickable {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
 
 <body>
-  <div id="intro">
-    <img id="bunny" src="assets/bunny.png" alt="Hacked by Bunny">
 
-    <div id="terminal">
-      <p class="glitch">YOU’VE BEEN HACKED BY BUNNY</p>
-      <p class="sub">unauthorized access detected</p>
-      <p class="sub">system integrity: compromised</p>
-    </div>
-
-    <button id="secureBtn">CLICK TO SECURE NETWORK</button>
+<!-- INTRO -->
+<div id="intro">
+  <div id="terminal">
+YOU'VE BEEN HACKED BY BUNNY
+SYSTEM INTEGRITY: COMPROMISED
+PRESS BUTTON TO ATTEMPT RECOVERY
   </div>
+  <button id="startBtn">SECURE NETWORK</button>
+</div>
 
-  <audio id="laugh" src="assets/evil-laugh.wav"></audio>
-
-  <script>
-    const laugh = document.getElementById("laugh");
-    const btn = document.getElementById("secureBtn");
-
-    // attempt autoplay (will fail silently if browser blocks it)
-    window.addEventListener("load", () => {
-      laugh.volume = 0.6;
-      laugh.play().catch(() => {});
-    });
-
-    // guaranteed play on interaction
-    btn.addEventListener("click", () => {
-      laugh.play().catch(() => {});
-      document.getElementById("intro").innerHTML = `
-        <div id="terminal">
-          <p class="glitch">PATCHING SYSTEM…</p>
-          <p class="sub">firewalls restoring</p>
-          <p class="sub">connection stabilized</p>
-        </div>
-      `;
-    });
-  </script>
-</body>
-
-<body>
-
-<div id="terminal"></div>
-<canvas id="gameCanvas" width="800" height="400"></canvas>
-<div id="dialogueBox"></div>
+<!-- GAME -->
+<div id="game">
+  <canvas id="gameCanvas" width="500" height="500"></canvas>
+  <div id="dialogueBox"></div>
+</div>
 
 <script>
-// ELEMENTS
-const terminal = document.getElementById("terminal");
+/* ---------- SETUP ---------- */
+const intro = document.getElementById("intro");
+const game = document.getElementById("game");
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const dialogueBox = document.getElementById("dialogueBox");
 
-// GAME STATE
-let gameStarted = false;
-let currentLevel = 0;
-let mazeSize = 10;
-let player = {x:1, y:1};
-let maze = [];
+const tileCount = 10;
+const tileSize = canvas.width / tileCount;
+
+let player = { x: 1, y: 1 };
 let collected = 0;
-let totalCollectibles = 0;
 
-// LEVEL DATA (simple tile maps)
-// 0 = empty, 1 = wall, 2 = collectible
-const levels = [
-  [
-    [1,1,1,1,1,1,1,1,1,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,0,1,1,0,1,1,0,2,1],
-    [1,0,0,0,2,0,0,0,0,1],
-    [1,1,1,0,1,0,1,1,0,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,0,1,1,0,1,1,0,2,1],
-    [1,0,0,0,2,0,0,0,0,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,1,1,1,1,1,1,1,1,1],
-  ],
-  [
-    [1,1,1,1,1,1,1,1,1,1],
-    [1,2,0,1,0,0,1,2,0,1],
-    [1,0,1,1,0,1,1,0,2,1],
-    [1,0,0,0,2,0,0,0,0,1],
-    [1,1,1,0,1,0,1,1,0,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,0,1,1,0,1,1,0,2,1],
-    [1,0,0,0,2,0,0,0,0,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,1,1,1,1,1,1,1,1,1],
-  ],
-  [
-    [1,1,1,1,1,1,1,1,1,1],
-    [1,2,0,1,0,0,1,2,0,1],
-    [1,0,1,1,0,1,1,0,2,1],
-    [1,0,0,0,2,0,0,0,0,1],
-    [1,1,1,0,1,0,1,1,0,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,0,1,1,0,1,1,0,2,1],
-    [1,0,0,0,2,0,0,0,0,1],
-    [1,2,0,0,0,0,0,2,0,1],
-    [1,1,1,1,1,1,1,1,1,1],
-  ]
+/* ---------- LEVEL ---------- */
+let maze = [
+  [1,1,1,1,1,1,1,1,1,1],
+  [1,0,2,0,0,0,0,2,0,1],
+  [1,0,1,1,0,1,1,0,0,1],
+  [1,0,0,0,2,0,0,0,0,1],
+  [1,1,1,0,1,0,1,1,0,1],
+  [1,0,0,0,0,0,0,2,0,1],
+  [1,0,1,1,0,1,1,0,0,1],
+  [1,0,0,0,2,0,0,0,0,1],
+  [1,2,0,0,0,0,0,0,2,1],
+  [1,1,1,1,1,1,1,1,1,1],
 ];
 
-// TERMINAL INTRO
-const introLines = [
-  "YOU'VE BEEN HACKED BY BUNNY! MUHAHAHA",
-  "!!! SYSTEM COMPROMISED !!!",
-  "!!! UNAUTHORIZED ACCESS DETECTED !!!",
-  "Press Y to continue… if you dare"
-];
+const totalCollectibles = maze.flat().filter(t => t === 2).length;
 
-let lineIndex = 0;
-let charIndex = 0;
+/* ---------- DRAW ---------- */
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-function typeLine() {
-  if(lineIndex < introLines.length){
-    if(charIndex < introLines[lineIndex].length){
-      terminal.textContent += introLines[lineIndex][charIndex];
-      charIndex++;
-      setTimeout(typeLine, 50);
-    } else {
-      terminal.textContent += "\n";
-      lineIndex++;
-      charIndex = 0;
-      setTimeout(typeLine, 300);
+  for (let y = 0; y < tileCount; y++) {
+    for (let x = 0; x < tileCount; x++) {
+      const px = x * tileSize;
+      const py = y * tileSize;
+
+      if (maze[y][x] === 1) {
+        ctx.fillStyle = "#ff66aa";
+        ctx.fillRect(px, py, tileSize, tileSize);
+      }
+
+      if (maze[y][x] === 2) {
+        ctx.fillStyle = "#00ff9c";
+        ctx.fillRect(
+          px + tileSize * 0.35,
+          py + tileSize * 0.35,
+          tileSize * 0.3,
+          tileSize * 0.3
+        );
+      }
     }
   }
-}
-typeLine();
 
-function flickerTerminal() {
-  if(Math.random() < 0.1){
-    terminal.style.color = "#ff99cc";
-  } else {
-    terminal.style.color = "#ff66aa";
-  }
-  if(!gameStarted) setTimeout(flickerTerminal, 100);
+  // Player (not a blob)
+  ctx.fillStyle = "#00ff9c";
+  ctx.fillRect(
+    player.x * tileSize + tileSize * 0.2,
+    player.y * tileSize + tileSize * 0.2,
+    tileSize * 0.6,
+    tileSize * 0.6
+  );
 }
-flickerTerminal();
 
-// KEY PRESS TO START
-document.addEventListener("keydown", function(e){
-  if(!gameStarted && (e.key === "y" || e.key === "Y")){
-    startLevel(currentLevel);
-  } else {
-    movePlayer(e.key);
+/* ---------- MOVE ---------- */
+document.addEventListener("keydown", (e) => {
+  let nx = player.x;
+  let ny = player.y;
+
+  if (e.key === "ArrowUp") ny--;
+  if (e.key === "ArrowDown") ny++;
+  if (e.key === "ArrowLeft") nx--;
+  if (e.key === "ArrowRight") nx++;
+
+  if (maze[ny][nx] !== 1) {
+    player.x = nx;
+    player.y = ny;
+
+    if (maze[ny][nx] === 2) {
+      maze[ny][nx] = 0;
+      collected++;
+      if (collected === totalCollectibles) {
+        dialogueBox.innerHTML = "SYSTEM STABILIZED 💚";
+      }
+    }
+
+    draw();
   }
 });
 
-// START LEVEL
-function startLevel(levelNum){
-  gameStarted = true;
-  terminal.style.display = "none";
-  canvas.style.display = "block";
-  maze = JSON.parse(JSON.stringify(levels[levelNum]));
-  player = {x:1, y:1};
-  collected = 0;
-  totalCollectibles = maze.flat().filter(t=>t===2).length;
-  drawMaze();
-}
-
-// DRAW MAZE
-function drawMaze(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  const tileSize = canvas.width / mazeSize;
-  for(let y=0;y<mazeSize;y++){
-    for(let x=0;x<mazeSize;x++){
-      if(maze[y][x]===1){
-        ctx.fillStyle = "#ff66aa";
-        ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
-      } else if(maze[y][x]===2){
-        ctx.fillStyle = "pink";
-        ctx.fillRect(x*tileSize+tileSize/4, y*tileSize+tileSize/4, tileSize/2, tileSize/2);
-      }
-    }
-  }
-  // Draw player
-  ctx.fillStyle = "brown";
-  ctx.fillRect(player.x*tileSize, player.y*tileSize, tileSize, tileSize);
-}
-
-// MOVE PLAYER
-function movePlayer(key){
-  if(!gameStarted) return;
-  let newX = player.x;
-  let newY = player.y;
-  if(key==="ArrowUp") newY--;
-  if(key==="ArrowDown") newY++;
-  if(key==="ArrowLeft") newX--;
-  if(key==="ArrowRight") newX++;
-  if(maze[newY][newX]!==1){
-    player.x = newX;
-    player.y = newY;
-    if(maze[newY][newX]===2){
-      maze[newY][newX]=0;
-      collected++;
-      if(collected===totalCollectibles){
-        showDialogueForLevel();
-      }
-    }
-    drawMaze();
-  }
-}
-
-// DIALOGUE PLACEHOLDER
-function showDialogueForLevel(){
-  canvas.style.display = "none";
-  dialogueBox.style.display = "block";
-  dialogueBox.innerHTML = `Level ${currentLevel+1} Complete!<br><span class="clickable" id="nextLevel">Click to continue</span>`;
-  document.getElementById("nextLevel").addEventListener("click", function(){
-    dialogueBox.style.display = "none";
-    currentLevel++;
-    if(currentLevel<levels.length){
-      startLevel(currentLevel);
-    } else {
-      showEndgame();
-    }
-  });
-}
-
-// ENDGAME
-function showEndgame(){
-  canvas.style.display = "block";
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Draw pixel heart
-  ctx.fillStyle = "green";
-  ctx.fillRect(370,180,20,20);
-  ctx.fillRect(390,180,20,20);
-  ctx.fillRect(360,200,20,20);
-  ctx.fillRect(400,200,20,20);
-  ctx.fillRect(370,220,40,20);
-
-  dialogueBox.style.display = "block";
-  dialogueBox.innerHTML = 'Well done, Mr. Cody! <span class="clickable" id="heartClick">Click the heart</span>';
-  document.getElementById("heartClick").addEventListener("click", showBonus);
-}
-
-// BONUS LOOT
-function showBonus(){
-  dialogueBox.style.display = "none";
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Draw cassette
-  ctx.fillStyle = "black";
-  ctx.fillRect(360,180,80,40); // body
-  ctx.fillStyle = "white";
-  ctx.fillRect(365,185,70,30); // label
-  ctx.fillStyle = "green";
-  ctx.fillRect(365,200,30,10); // tape reel left
-  ctx.fillRect(405,200,30,10); // tape reel right
-  // Heart on cassette
-  ctx.fillStyle = "black";
-  ctx.fillRect(395,190,10,10);
-  ctx.fillStyle = "white";
-  ctx.fillRect(396,191,8,8);
-
-  dialogueBox.style.display = "block";
-  dialogueBox.innerHTML = 'Bonus Loot Unlocked: Puppy’s Playlist! <span class="clickable" id="cassetteClick">Click to listen</span>';
-  document.getElementById("cassetteClick").addEventListener("click", function(){
-    alert("Link to playlist here!");
-  });
-}
+/* ---------- START ---------- */
+document.getElementById("startBtn").addEventListener("click", () => {
+  intro.style.display = "none";
+  game.style.display = "block";
+  draw();
+});
 </script>
 
 </body>
