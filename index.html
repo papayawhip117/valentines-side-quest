@@ -49,14 +49,63 @@
 <div id="dialogueBox"></div>
 
 <script>
+// ELEMENTS
 const terminal = document.getElementById("terminal");
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const dialogueBox = document.getElementById("dialogueBox");
 
+// GAME STATE
 let gameStarted = false;
+let currentLevel = 0;
+let mazeSize = 10;
+let player = {x:1, y:1};
+let maze = [];
+let collected = 0;
+let totalCollectibles = 0;
 
-// Intro text
+// LEVEL DATA (simple tile maps)
+// 0 = empty, 1 = wall, 2 = collectible
+const levels = [
+  [
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,0,1,1,0,1,1,0,2,1],
+    [1,0,0,0,2,0,0,0,0,1],
+    [1,1,1,0,1,0,1,1,0,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,0,1,1,0,1,1,0,2,1],
+    [1,0,0,0,2,0,0,0,0,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,1,1,1,1,1,1,1,1,1],
+  ],
+  [
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,2,0,1,0,0,1,2,0,1],
+    [1,0,1,1,0,1,1,0,2,1],
+    [1,0,0,0,2,0,0,0,0,1],
+    [1,1,1,0,1,0,1,1,0,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,0,1,1,0,1,1,0,2,1],
+    [1,0,0,0,2,0,0,0,0,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,1,1,1,1,1,1,1,1,1],
+  ],
+  [
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,2,0,1,0,0,1,2,0,1],
+    [1,0,1,1,0,1,1,0,2,1],
+    [1,0,0,0,2,0,0,0,0,1],
+    [1,1,1,0,1,0,1,1,0,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,0,1,1,0,1,1,0,2,1],
+    [1,0,0,0,2,0,0,0,0,1],
+    [1,2,0,0,0,0,0,2,0,1],
+    [1,1,1,1,1,1,1,1,1,1],
+  ]
+];
+
+// TERMINAL INTRO
 const introLines = [
   "YOU'VE BEEN HACKED BY BUNNY! MUHAHAHA",
   "!!! SYSTEM COMPROMISED !!!",
@@ -67,7 +116,6 @@ const introLines = [
 let lineIndex = 0;
 let charIndex = 0;
 
-// Typewriter effect
 function typeLine() {
   if(lineIndex < introLines.length){
     if(charIndex < introLines[lineIndex].length){
@@ -84,7 +132,6 @@ function typeLine() {
 }
 typeLine();
 
-// Flicker effect
 function flickerTerminal() {
   if(Math.random() < 0.1){
     terminal.style.color = "#ff99cc";
@@ -95,49 +142,91 @@ function flickerTerminal() {
 }
 flickerTerminal();
 
-// Listen for Y key to start
-document.addEventListener("keydown", function(e) {
+// KEY PRESS TO START
+document.addEventListener("keydown", function(e){
   if(!gameStarted && (e.key === "y" || e.key === "Y")){
-    startGame();
+    startLevel(currentLevel);
+  } else {
+    movePlayer(e.key);
   }
 });
 
-// Start game
-function startGame(){
+// START LEVEL
+function startLevel(levelNum){
   gameStarted = true;
   terminal.style.display = "none";
   canvas.style.display = "block";
-  drawPlaceholderPuppy();
-  // Simulate level completion after 3s
-  setTimeout(showEndgame, 3000);
+  maze = JSON.parse(JSON.stringify(levels[levelNum]));
+  player = {x:1, y:1};
+  collected = 0;
+  totalCollectibles = maze.flat().filter(t=>t===2).length;
+  drawMaze();
 }
 
-// Placeholder puppy drawing
-function drawPlaceholderPuppy(){
+// DRAW MAZE
+function drawMaze(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  const tileSize = canvas.width / mazeSize;
+  for(let y=0;y<mazeSize;y++){
+    for(let x=0;x<mazeSize;x++){
+      if(maze[y][x]===1){
+        ctx.fillStyle = "#ff66aa";
+        ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+      } else if(maze[y][x]===2){
+        ctx.fillStyle = "pink";
+        ctx.fillRect(x*tileSize+tileSize/4, y*tileSize+tileSize/4, tileSize/2, tileSize/2);
+      }
+    }
+  }
+  // Draw player
   ctx.fillStyle = "brown";
-  ctx.fillRect(50, 300, 40, 30); // body
-  ctx.fillStyle = "darkbrown";
-  ctx.fillRect(50, 280, 40, 20); // head
-  ctx.fillStyle = "pink";
-  ctx.fillRect(65, 295, 10, 5); // tongue
-  // ears
-  ctx.fillStyle = "darkbrown";
-  ctx.fillRect(50, 270, 8, 10);
-  ctx.fillRect(82, 270, 8, 10);
-  // eyes
-  ctx.fillStyle = "black";
-  ctx.fillRect(55, 285, 5, 5);
-  ctx.fillRect(78, 285, 5, 5);
-  // tail
-  ctx.fillStyle = "darkbrown";
-  ctx.fillRect(30, 300, 10, 5);
+  ctx.fillRect(player.x*tileSize, player.y*tileSize, tileSize, tileSize);
 }
 
-// Endgame heart
+// MOVE PLAYER
+function movePlayer(key){
+  if(!gameStarted) return;
+  let newX = player.x;
+  let newY = player.y;
+  if(key==="ArrowUp") newY--;
+  if(key==="ArrowDown") newY++;
+  if(key==="ArrowLeft") newX--;
+  if(key==="ArrowRight") newX++;
+  if(maze[newY][newX]!==1){
+    player.x = newX;
+    player.y = newY;
+    if(maze[newY][newX]===2){
+      maze[newY][newX]=0;
+      collected++;
+      if(collected===totalCollectibles){
+        showDialogueForLevel();
+      }
+    }
+    drawMaze();
+  }
+}
+
+// DIALOGUE PLACEHOLDER
+function showDialogueForLevel(){
+  canvas.style.display = "none";
+  dialogueBox.style.display = "block";
+  dialogueBox.innerHTML = `Level ${currentLevel+1} Complete!<br><span class="clickable" id="nextLevel">Click to continue</span>`;
+  document.getElementById("nextLevel").addEventListener("click", function(){
+    dialogueBox.style.display = "none";
+    currentLevel++;
+    if(currentLevel<levels.length){
+      startLevel(currentLevel);
+    } else {
+      showEndgame();
+    }
+  });
+}
+
+// ENDGAME
 function showEndgame(){
+  canvas.style.display = "block";
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Draw pixel heart placeholder
+  // Draw pixel heart
   ctx.fillStyle = "green";
   ctx.fillRect(370,180,20,20);
   ctx.fillRect(390,180,20,20);
@@ -146,12 +235,11 @@ function showEndgame(){
   ctx.fillRect(370,220,40,20);
 
   dialogueBox.style.display = "block";
-  dialogueBox.innerHTML = 'Well done, Mr. Cody. <span class="clickable" id="heartClick">Click the heart</span>';
-
+  dialogueBox.innerHTML = 'Well done, Mr. Cody! <span class="clickable" id="heartClick">Click the heart</span>';
   document.getElementById("heartClick").addEventListener("click", showBonus);
 }
 
-// Bonus loot cassette
+// BONUS LOOT
 function showBonus(){
   dialogueBox.style.display = "none";
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -171,7 +259,6 @@ function showBonus(){
 
   dialogueBox.style.display = "block";
   dialogueBox.innerHTML = 'Bonus Loot Unlocked: Puppy’s Playlist! <span class="clickable" id="cassetteClick">Click to listen</span>';
-
   document.getElementById("cassetteClick").addEventListener("click", function(){
     alert("Link to playlist here!");
   });
