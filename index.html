@@ -3,45 +3,103 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Valentine's Side Quest</title>
+<title>404: ERROR HEART NOT FOUND</title>
 <style>
-  body {
-    margin: 0;
-    background: black;
-    color: #ff66aa;
-    font-family: monospace;
-    overflow: hidden;
-  }
-  #terminal {
-    padding: 20px;
-    white-space: pre-wrap;
-    font-size: 18px;
-  }
-  #gameCanvas {
-    display: none;
-    background: black;
-    margin: auto;
-    display: block;
-  }
-  #dialogueBox {
-    display: none;
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #111;
-    border: 2px solid #ff66aa;
-    padding: 20px;
-    color: #ff66aa;
-    font-family: monospace;
-    max-width: 600px;
-  }
-  .clickable {
-    cursor: pointer;
-    text-decoration: underline;
-  }
-</style>
-</head>
+  #intro {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+  color: #00ff9c;
+  font-family: monospace;
+}
+
+#bunny {
+  width: 180px;
+  image-rendering: pixelated;
+}
+
+#terminal {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 16px 24px;
+  border: 1px solid #00ff9c;
+  box-shadow: 0 0 12px #00ff9c55;
+}
+
+.glitch {
+  font-size: 1.2rem;
+  animation: glitch 1.2s infinite;
+}
+
+.sub {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+#secureBtn {
+  background: black;
+  color: #00ff9c;
+  border: 1px solid #00ff9c;
+  padding: 12px 18px;
+  font-family: monospace;
+  cursor: pointer;
+}
+
+#secureBtn:hover {
+  background: #00ff9c;
+  color: black;
+}
+
+@keyframes glitch {
+  0% { text-shadow: 2px 0 red; }
+  25% { text-shadow: -2px 0 cyan; }
+  50% { text-shadow: 2px 0 magenta; }
+  75% { text-shadow: -2px 0 lime; }
+  100% { text-shadow: 2px 0 red; }
+}
+
+<body>
+  <div id="intro">
+    <img id="bunny" src="assets/bunny.png" alt="Hacked by Bunny">
+
+    <div id="terminal">
+      <p class="glitch">YOU’VE BEEN HACKED BY BUNNY</p>
+      <p class="sub">unauthorized access detected</p>
+      <p class="sub">system integrity: compromised</p>
+    </div>
+
+    <button id="secureBtn">CLICK TO SECURE NETWORK</button>
+  </div>
+
+  <audio id="laugh" src="assets/evil-laugh.wav"></audio>
+
+  <script>
+    const laugh = document.getElementById("laugh");
+    const btn = document.getElementById("secureBtn");
+
+    // attempt autoplay (will fail silently if browser blocks it)
+    window.addEventListener("load", () => {
+      laugh.volume = 0.6;
+      laugh.play().catch(() => {});
+    });
+
+    // guaranteed play on interaction
+    btn.addEventListener("click", () => {
+      laugh.play().catch(() => {});
+      document.getElementById("intro").innerHTML = `
+        <div id="terminal">
+          <p class="glitch">PATCHING SYSTEM…</p>
+          <p class="sub">firewalls restoring</p>
+          <p class="sub">connection stabilized</p>
+        </div>
+      `;
+    });
+  </script>
+</body>
+
 <body>
 
 <div id="terminal"></div>
