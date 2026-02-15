@@ -1,4 +1,6 @@
-bunny-hack/
-├─ index.html
-├─ bunny.png
-└─ evil-laugh.wav
+my-project/
+  index.html
+  assets/
+    bunny-hack/
+      bunny.png
+      evil-laugh.wav

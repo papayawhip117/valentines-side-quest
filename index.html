@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>404: ERROR HEART NOT FOUND</title>
-
 <style>
   body {
     margin: 0;
@@ -17,11 +16,11 @@
     height: 100vh;
   }
 
-  #intro, #game {
+  #intro, #game, #riddleScreen {
     text-align: center;
   }
 
-  #game {
+  #game, #riddleScreen {
     display: none;
   }
 
@@ -40,6 +39,7 @@
     padding: 10px 16px;
     cursor: pointer;
     font-family: monospace;
+    font-size: 16px;
   }
 
   button:hover {
@@ -55,25 +55,90 @@
 
   #dialogueBox {
     margin-top: 10px;
+    min-height: 20px;
   }
 
   .clickable {
     text-decoration: underline;
     cursor: pointer;
+    display: inline-block;
+    animation: wiggle 0.5s infinite alternate;
+    margin-top: 20px;
+    font-size: 20px;
+  }
+
+  @keyframes wiggle {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-15deg); }
+    50% { transform: rotate(10deg); }
+    75% { transform: rotate(-5deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  #bunnyImg {
+    display: block;
+    margin: 12px auto;
+    max-width: 260px;
+    width: 60%;
+    cursor: pointer;
+  }
+
+  .glitch {
+    color: hotpink;
+    animation: glitchFlash 0.2s infinite alternate;
+  }
+
+  @keyframes glitchFlash {
+    0% { color: hotpink; text-shadow: 0 0 5px hotpink; }
+    50% { color: #ff66aa; text-shadow: 0 0 10px #ff66aa; }
+    100% { color: hotpink; text-shadow: 0 0 5px hotpink; }
+  }
+
+  /* New: level answer modal */
+  #levelModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+  }
+
+  #levelModalCard {
+    width: min(520px, 92vw);
+    border: 2px solid #00ff9c;
+    padding: 18px;
+    background: #000;
+    text-align: center;
+  }
+
+  #modalAnswer {
+    white-space: pre-line;
+    margin: 10px 0 16px;
   }
 </style>
 </head>
-
 <body>
 
 <!-- INTRO -->
 <div id="intro">
   <div id="terminal">
-YOU'VE BEEN HACKED BY BUNNY
-SYSTEM INTEGRITY: COMPROMISED
-PRESS BUTTON TO ATTEMPT RECOVERY
+    <span class="glitch">YOU'VE BEEN HACKED BY BUNNY</span>
+    <br>
+    SYSTEM INTEGRITY: COMPROMISED
+    <br>
+    PRESS BUTTON TO ATTEMPT RECOVERY
   </div>
+  <img id="bunnyImg" src="assets/bunny-hack/bunny.png" alt="Bunny" role="button" tabindex="0" />
+  <audio id="laughAudio" src="assets/bunny-hack/evil-laugh.wav" preload="auto"></audio>
   <button id="startBtn">SECURE NETWORK</button>
+</div>
+
+<!-- RIDDLE SCREEN -->
+<div id="riddleScreen">
+  <div id="riddleText" style="color:#00ff9c; font-size:20px; margin-bottom:20px;"></div>
+  <div id="riddleButton" class="clickable">(╭ರ_•́)</div>
 </div>
 
 <!-- GAME -->
@@ -82,63 +147,209 @@ PRESS BUTTON TO ATTEMPT RECOVERY
   <div id="dialogueBox"></div>
 </div>
 
+<!-- New: level completion modal -->
+<div id="levelModal">
+  <div id="levelModalCard">
+    <h2>RIDDLE DECODED</h2>
+    <div id="modalAnswer"></div>
+    <button id="nextLevelBtn">NEXT LEVEL ></button>
+  </div>
+</div>
+
 <script>
+/* ---------- BUNNY LAUGH ---------- */
+const bunnyImg = document.getElementById('bunnyImg');
+const laughAudio = document.getElementById('laughAudio');
+
+function playLaugh() {
+  if (!laughAudio) return;
+  try { laughAudio.currentTime = 0; laughAudio.play(); } catch (e) {}
+}
+
+bunnyImg.addEventListener('click', playLaugh);
+bunnyImg.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playLaugh(); }
+});
+
 /* ---------- SETUP ---------- */
 const intro = document.getElementById("intro");
 const game = document.getElementById("game");
+const riddleScreen = document.getElementById("riddleScreen");
+const riddleText = document.getElementById("riddleText");
+const riddleButton = document.getElementById("riddleButton");
+const dialogueBox = document.getElementById("dialogueBox");
+
+const levelModal = document.getElementById("levelModal");
+const modalAnswer = document.getElementById("modalAnswer");
+const nextLevelBtn = document.getElementById("nextLevelBtn");
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const dialogueBox = document.getElementById("dialogueBox");
 
 const tileCount = 10;
 const tileSize = canvas.width / tileCount;
 
 let player = { x: 1, y: 1 };
-let collected = 0;
+let hasKey = false;
+let currentLevel = 0;
+let maze = [];
+let phase = "intro"; // intro | riddle | play | modal | ending
+let prizeSpawned = false;
 
-/* ---------- LEVEL ---------- */
-let maze = [
-  [1,1,1,1,1,1,1,1,1,1],
-  [1,0,2,0,0,0,0,2,0,1],
-  [1,0,1,1,0,1,1,0,0,1],
-  [1,0,0,0,2,0,0,0,0,1],
-  [1,1,1,0,1,0,1,1,0,1],
-  [1,0,0,0,0,0,0,2,0,1],
-  [1,0,1,1,0,1,1,0,0,1],
-  [1,0,0,0,2,0,0,0,0,1],
-  [1,2,0,0,0,0,0,0,2,1],
-  [1,1,1,1,1,1,1,1,1,1],
+/* ---------- LEVELS ---------- */
+const levels = [
+  {
+    map: [
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,0,2,0,0,0,0,2,0,1],
+      [1,0,1,1,0,1,1,0,0,1],
+      [1,0,0,0,2,0,0,0,0,1],
+      [1,1,1,0,1,0,1,1,0,1],
+      [1,0,0,0,0,0,0,2,0,1],
+      [1,0,1,1,0,1,1,0,0,1],
+      [1,0,0,0,2,0,0,0,0,1],
+      [1,2,0,0,0,0,0,0,2,1],
+      [1,1,1,1,1,1,1,1,1,1]
+    ],
+    riddle: "I speak without a mouth and hear without ears. What am I?",
+    answer: "Answer: An echo.",
+    prize: "Signal Crystal"
+  },
+  {
+    map: [
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,0,2,0,1,0,2,0,0,1],
+      [1,1,0,1,0,1,0,1,0,1],
+      [1,0,0,0,2,0,0,0,2,1],
+      [1,0,1,1,0,1,1,0,0,1],
+      [1,2,0,0,0,0,2,0,1,1],
+      [1,0,1,1,0,1,1,0,2,1],
+      [1,0,0,0,2,0,0,0,0,1],
+      [1,2,0,0,0,2,0,0,2,1],
+      [1,1,1,1,1,1,1,1,1,1]
+    ],
+    riddle: "The more you take, the more you leave behind. What am I?",
+    answer: "Answer: Footsteps.",
+    prize: "Trace Drive"
+  },
+  {
+    map: [
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,2,0,2,0,1,0,2,0,1],
+      [1,0,1,1,0,1,1,0,0,1],
+      [1,2,0,0,2,0,0,0,2,1],
+      [1,0,1,1,0,1,1,0,0,1],
+      [1,0,0,0,0,2,0,0,0,1],
+      [1,0,1,1,0,1,1,0,2,1],
+      [1,2,0,0,2,0,0,0,0,1],
+      [1,0,0,0,0,0,0,2,0,1],
+      [1,1,1,1,1,1,1,1,1,1]
+    ],
+    riddle: "What has keys but can’t open locks?",
+    answer: "Answer: A piano.",
+    prize: "Chord Chip"
+  },
+  {
+    map: [
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,0,0,4,1],
+      [1,0,1,1,1,1,1,0,0,1],
+      [1,0,1,3,3,3,1,0,0,1],
+      [1,0,1,2,2,2,1,0,0,1],
+      [1,0,1,1,1,1,1,0,0,1],
+      [1,0,0,0,0,0,0,0,2,1],
+      [1,2,0,0,0,0,0,0,0,1],
+      [1,0,0,0,0,0,0,2,0,1],
+      [1,1,1,1,1,1,1,1,1,1]
+    ],
+    riddle: "Find the key. Some paths are closed for a reason.",
+    answer: "Answer: Trust the key to reveal hidden routes.",
+    prize: "Gate Kernel"
+  },
+  {
+    map: [
+      [1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,4,0,0,0,0,1],
+      [1,0,1,1,1,1,1,1,0,1],
+      [1,0,1,3,3,3,3,1,0,1],
+      [1,0,1,2,2,2,2,1,0,1],
+      [1,0,1,1,1,1,1,1,0,1],
+      [1,0,0,0,0,0,0,0,4,1],
+      [1,0,1,3,3,3,1,1,0,1],
+      [1,0,1,2,2,2,1,1,0,1],
+      [1,1,1,1,1,1,1,1,1,1]
+    ],
+    riddle: "Not all locks guard the same secret.",
+    answer: "Answer: Some locks protect pieces of one bigger truth.",
+    prize: "Core Fragment"
+  }
 ];
 
-const totalCollectibles = maze.flat().filter(t => t === 2).length;
+/* ---------- HELPERS ---------- */
+function countCollectibles() {
+  return maze.flat().filter(t => t === 2).length;
+}
 
-/* ---------- DRAW ---------- */
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+function findPrizeSpawnTile() {
+  const cx = Math.floor(tileCount / 2);
+  const cy = Math.floor(tileCount / 2);
+
+  if (maze[cy][cx] === 0) return { x: cx, y: cy };
+
+  let best = null;
+  let bestDist = Infinity;
 
   for (let y = 0; y < tileCount; y++) {
     for (let x = 0; x < tileCount; x++) {
-      const px = x * tileSize;
-      const py = y * tileSize;
-
-      if (maze[y][x] === 1) {
-        ctx.fillStyle = "#ff66aa";
-        ctx.fillRect(px, py, tileSize, tileSize);
-      }
-
-      if (maze[y][x] === 2) {
-        ctx.fillStyle = "#00ff9c";
-        ctx.fillRect(
-          px + tileSize * 0.35,
-          py + tileSize * 0.35,
-          tileSize * 0.3,
-          tileSize * 0.3
-        );
+      if (maze[y][x] !== 0) continue;
+      const d = Math.abs(x - cx) + Math.abs(y - cy);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { x, y };
       }
     }
   }
 
-  // Player (not a blob)
+  return best;
+}
+
+function spawnPrize() {
+  const spot = findPrizeSpawnTile();
+  if (!spot) return;
+  maze[spot.y][spot.x] = 5; // prize tile
+  prizeSpawned = true;
+  dialogueBox.textContent = "Prize detected. Collect it to decode the riddle.";
+}
+
+/* ---------- DRAW ---------- */
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < tileCount; y++) {
+    for (let x = 0; x < tileCount; x++) {
+      const tile = maze[y][x];
+      const px = x * tileSize;
+      const py = y * tileSize;
+
+      if (tile === 1) {
+        ctx.fillStyle = "#ff66aa";
+        ctx.fillRect(px, py, tileSize, tileSize);
+      } else if (tile === 2) {
+        ctx.fillStyle = "#00ff9c";
+        ctx.fillRect(px + tileSize * 0.35, py + tileSize * 0.35, tileSize * 0.3, tileSize * 0.3);
+      } else if (tile === 3) {
+        ctx.fillStyle = hasKey ? "#ff66aa" : "#ff0000";
+        ctx.fillRect(px, py, tileSize, tileSize);
+      } else if (tile === 4) {
+        ctx.fillStyle = "#ffff00";
+        ctx.fillRect(px + tileSize * 0.35, py + tileSize * 0.35, tileSize * 0.3, tileSize * 0.3);
+      } else if (tile === 5) {
+        ctx.fillStyle = "#ff00ff";
+        ctx.fillRect(px + tileSize * 0.25, py + tileSize * 0.25, tileSize * 0.5, tileSize * 0.5);
+      }
+    }
+  }
+
   ctx.fillStyle = "#00ff9c";
   ctx.fillRect(
     player.x * tileSize + tileSize * 0.2,
@@ -148,39 +359,108 @@ function draw() {
   );
 }
 
+/* ---------- MODAL ---------- */
+function showLevelAnswerModal(levelIndex) {
+  phase = "modal";
+  const lvl = levels[levelIndex];
+  modalAnswer.textContent = `${lvl.answer}\nPrize recovered: ${lvl.prize}`;
+  nextLevelBtn.textContent = levelIndex < levels.length - 1 ? "NEXT LEVEL >" : "FINISH >";
+  levelModal.style.display = "flex";
+}
+
 /* ---------- MOVE ---------- */
-document.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", e => {
+  if (phase !== "play") return;
+
   let nx = player.x;
   let ny = player.y;
 
   if (e.key === "ArrowUp") ny--;
-  if (e.key === "ArrowDown") ny++;
-  if (e.key === "ArrowLeft") nx--;
-  if (e.key === "ArrowRight") nx++;
+  else if (e.key === "ArrowDown") ny++;
+  else if (e.key === "ArrowLeft") nx--;
+  else if (e.key === "ArrowRight") nx++;
+  else return;
 
-  if (maze[ny][nx] !== 1) {
-    player.x = nx;
-    player.y = ny;
+  if (ny < 0 || ny >= maze.length || nx < 0 || nx >= maze[0].length) return;
 
-    if (maze[ny][nx] === 2) {
-      maze[ny][nx] = 0;
-      collected++;
-      if (collected === totalCollectibles) {
-        dialogueBox.innerHTML = "SYSTEM STABILIZED 💚";
-      }
-    }
+  const nextTile = maze[ny][nx];
+  if (nextTile === 1) return;
+  if (nextTile === 3 && !hasKey) return;
 
+  player.x = nx;
+  player.y = ny;
+
+  if (nextTile === 2) {
+    maze[ny][nx] = 0;
+  } else if (nextTile === 4) {
+    hasKey = true;
+    maze[ny][nx] = 0;
+    dialogueBox.textContent = "Key acquired. Locked barriers are now passable.";
+  } else if (nextTile === 5) {
+    maze[ny][nx] = 0;
     draw();
+    showLevelAnswerModal(currentLevel);
+    return;
   }
-});
 
-/* ---------- START ---------- */
-document.getElementById("startBtn").addEventListener("click", () => {
-  intro.style.display = "none";
-  game.style.display = "block";
+  const remaining = countCollectibles();
+  if (remaining === 0 && !prizeSpawned) {
+    spawnPrize();
+  } else if (remaining > 0) {
+    dialogueBox.textContent = `Fragments remaining: ${remaining}`;
+  }
+
   draw();
 });
-</script>
 
+/* ---------- LEVEL/RIDDLE HANDLING ---------- */
+function loadRiddle(levelIndex) {
+  phase = "riddle";
+  riddleText.innerText = levels[levelIndex].riddle;
+  riddleScreen.style.display = "block";
+  game.style.display = "none";
+  riddleButton.style.display = "inline-block";
+  riddleButton.onclick = () => {
+    riddleScreen.style.display = "none";
+    game.style.display = "block";
+    loadLevel(levelIndex);
+    phase = "play";
+  };
+}
+
+function loadLevel(levelIndex) {
+  maze = JSON.parse(JSON.stringify(levels[levelIndex].map));
+  hasKey = false;
+  prizeSpawned = false;
+  player = { x: 1, y: 1 };
+  dialogueBox.textContent = `Fragments remaining: ${countCollectibles()}`;
+  draw();
+}
+
+function nextLevel() {
+  currentLevel++;
+  if (currentLevel < levels.length) {
+    loadRiddle(currentLevel);
+  } else {
+    phase = "ending";
+    game.style.display = "none";
+    riddleScreen.style.display = "block";
+    riddleText.innerText = "SYSTEM STABILIZED <3";
+    riddleButton.style.display = "none";
+  }
+}
+
+nextLevelBtn.onclick = () => {
+  levelModal.style.display = "none";
+  nextLevel();
+};
+
+/* ---------- START GAME ---------- */
+document.getElementById("startBtn").onclick = () => {
+  intro.style.display = "none";
+  currentLevel = 0;
+  loadRiddle(0);
+};
+</script>
 </body>
 </html>
